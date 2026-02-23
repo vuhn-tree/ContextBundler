@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import platform
 import subprocess
 import sys
 
@@ -173,8 +174,15 @@ def build_bundle(root, files):
 
 
 def copy_to_clipboard(text):
+    system = platform.system()
+    if system == "Darwin":
+        cmd = ["pbcopy"]
+    elif system == "Windows":
+        cmd = ["clip"]
+    else:
+        return False
     try:
-        subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+        subprocess.run(cmd, input=text.encode("utf-8"), check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False

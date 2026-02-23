@@ -4,6 +4,7 @@
 import argparse
 import difflib
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -40,8 +41,15 @@ def colored(text, color):
 
 
 def read_clipboard():
+    system = platform.system()
+    if system == "Darwin":
+        cmd = ["pbpaste"]
+    elif system == "Windows":
+        cmd = ["powershell", "-command", "Get-Clipboard"]
+    else:
+        return None
     try:
-        r = subprocess.run(["pbpaste"], capture_output=True, check=True)
+        r = subprocess.run(cmd, capture_output=True, check=True)
         return r.stdout.decode("utf-8")
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
