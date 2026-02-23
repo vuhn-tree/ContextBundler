@@ -22,7 +22,7 @@ EXCLUDED_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
     ".mp3", ".mp4", ".wav", ".avi", ".mov",
     ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-    ".egg-info",
+    ".lock", ".log", ".egg-info",
 }
 
 LOCKFILE_NAMES = {
@@ -191,10 +191,14 @@ def copy_to_clipboard(text):
 def main():
     parser = argparse.ArgumentParser(description="Bundle a projects context.")
     parser.add_argument("project_dir", help="Path to the project directory")
+    parser.add_argument("-o", "--output", type=str, default=None,
+                        help="Output file path (default: <project_name>_bundle.txt)")
+    parser.add_argument("--clipboard", action="store_true",
+                        help="Copy to clipboard instead of writing to file")
+    parser.add_argument("--stdout", action="store_true",
+                        help="Print to stdout instead of writing to file")
     parser.add_argument("--max-file-size", type=int, default=MAX_FILE_SIZE // 1024,
                         help="Skip files larger than this in KB (default: 100)")
-    parser.add_argument("--no-clipboard", action="store_true",
-                        help="Print to stdout instead of copying to clipboard")
     parser.add_argument("--exclude-dir", action="append", default=[],
                         help="Additional directories to exclude (repeatable)")
     parser.add_argument("--exclude-file", action="append", default=[],
@@ -218,16 +222,22 @@ def main():
 
     bundle = build_bundle(args.project_dir, files)
     bundle_size = len(bundle.encode("utf-8"))
-
-    if args.no_clipboard:
-        print(bundle)
-    elif copy_to_clipboard(bundle):
-        print("Copied to clipboard.", file=sys.stderr)
-    else:
-        print("Failed to copy to clipboard. Printing to stdout.", file=sys.stderr)
-        print(bundle)
-
     proj_name = os.path.basename(os.path.abspath(args.project_dir))
+
+    if args.stdout:
+        print(bundle)
+    elif args.clipboard:
+        if copy_to_clipboard(bundle):
+            print("Copied to clipboard.", file=sys.stderr)
+        else:
+            print("Failed to copy to clipboard.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        out_path = args.output or f"{proj_name}_bundle.txt"
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(bundle)
+        print(f"Wrote {out_path}", file=sys.stderr)
+
     print(f"\nBundled {len(files)} files ({human_size(bundle_size)}) from \"{proj_name}\"", file=sys.stderr)
 
     if skipped:
