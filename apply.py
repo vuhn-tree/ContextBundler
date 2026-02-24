@@ -73,8 +73,9 @@ def parse_file_blocks(text):
         else:
             if content.startswith("\n"):
                 content = content[1:]
-            if content.endswith("\n"):
-                content = content[:-1]
+
+        if content.endswith("\n\n"):
+            content = content[:-1]
 
         blocks.append((open_path, content))
 
