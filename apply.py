@@ -74,6 +74,8 @@ def parse_file_blocks(text):
             if content.startswith("\n"):
                 content = content[1:]
 
+        content = content.replace("\r\n", "\n").replace("\r", "\n")
+
         if content.endswith("\n\n"):
             content = content[:-1]
 
