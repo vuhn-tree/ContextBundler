@@ -14,21 +14,21 @@ EXCLUDED_DIRS = {
     ".claude", ".ruff_cache",
 }
 
-EXCLUDED_FILES = {".DS_Store", "Thumbs.db", ".env"}
+# INCLUDED_EXTENSIONS = {
+#     ".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css", ".scss",
+#     ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini", ".conf",
+#     ".md", ".txt", ".rst",
+#     ".sh", ".bash", ".zsh",
+#     ".sql",
+#     ".xml", ".csv",
+#     ".rb", ".go", ".rs", ".java", ".kt", ".c", ".cpp", ".h", ".hpp",
+#     ".swift", ".m", ".cs", ".php", ".lua", ".r", ".jl",
+#     ".dockerfile", ".tf", ".hcl",
+#     ".env.example", ".gitignore", ".dockerignore",
+# }
 
-EXCLUDED_EXTENSIONS = {
-    ".pyc", ".pyo", ".so", ".dylib", ".dll", ".exe",
-    ".zip", ".tar", ".gz", ".bz2", ".7z", ".rar",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
-    ".mp3", ".mp4", ".wav", ".avi", ".mov",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-    ".lock", ".log", ".egg-info",
-}
-
-LOCKFILE_NAMES = {
-    "package-lock.json", "yarn.lock", "poetry.lock",
-    "Pipfile.lock", "pnpm-lock.yaml", "Cargo.lock",
-    "composer.lock", "Gemfile.lock",
+INCLUDED_EXTENSIONS = {
+    ".py"
 }
 
 MAX_FILE_SIZE = 100 * 1024
@@ -61,16 +61,13 @@ def is_binary(filepath):
         return True
 
 
-def should_exclude(filename, ext, config):
-    if filename in EXCLUDED_FILES:
-        return "excluded filename"
-    if filename in LOCKFILE_NAMES:
-        return "lockfile"
-    if ext in EXCLUDED_EXTENSIONS:
-        return "excluded extension"
-    if filename in config.get("exclude_files", []):
-        return "user-excluded"
-    return None
+def should_include(filename, ext, config):
+    allowed = config.get("include_extensions", INCLUDED_EXTENSIONS)
+    if ext and ext in allowed:
+        return None
+    if filename in allowed:
+        return None
+    return "extension not included"
 
 
 def collect_files(root, config):
@@ -90,7 +87,7 @@ def collect_files(root, config):
             rel_path = os.path.relpath(filepath, root)
             ext = os.path.splitext(filename)[1].lower()
 
-            reason = should_exclude(filename, ext, config)
+            reason = should_include(filename, ext, config)
             if reason:
                 skipped.append((rel_path, reason))
                 continue
@@ -201,18 +198,19 @@ def main():
                         help="Skip files larger than this in KB (default: 100)")
     parser.add_argument("--exclude-dir", action="append", default=[],
                         help="Additional directories to exclude (repeatable)")
-    parser.add_argument("--exclude-file", action="append", default=[],
-                        help="Additional files to exclude (repeatable)")
+    parser.add_argument("--include-ext", action="append", default=[],
+                        help="Additional extensions to include, e.g. --include-ext .vue (repeatable)")
     args = parser.parse_args()
 
     if not os.path.isdir(args.project_dir):
         print(f"Error: '{args.project_dir}' is not a directory.", file=sys.stderr)
         sys.exit(1)
 
+    included = INCLUDED_EXTENSIONS | set(args.include_ext)
     config = {
         "max_file_size": args.max_file_size * 1024,
         "exclude_dirs": args.exclude_dir,
-        "exclude_files": args.exclude_file,
+        "include_extensions": included,
     }
 
     files, skipped = collect_files(args.project_dir, config)
